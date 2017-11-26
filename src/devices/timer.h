@@ -3,6 +3,14 @@
 
 #include <round.h>
 #include <stdint.h>
+#include <list.h>
+
+/* */
+struct timer_elem {
+  struct list_elem elem;
+  struct condition *condition;
+  int64_t end_time;
+};
 
 /* Number of timer interrupts per second. */
 #define TIMER_FREQ 100
