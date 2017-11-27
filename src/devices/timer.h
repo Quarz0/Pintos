@@ -8,7 +8,8 @@
 /* */
 struct timer_elem {
   struct list_elem elem;
-  struct condition *condition;
+  //struct condition *condition;
+  struct semaphore *semaphore;
   int64_t end_time;
 };
 

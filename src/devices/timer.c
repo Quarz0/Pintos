@@ -33,6 +33,8 @@ static void real_time_delay (int64_t num, int32_t denom);
 static struct list timer_list;
 static struct lock timer_lock;
 
+static int counter = 0; 
+
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -105,18 +107,17 @@ timer_sleep (int64_t ticks)
 {
   ASSERT (intr_get_level () == INTR_ON);
 
-  struct timer_elem *element = malloc(sizeof(struct timer_elem));
-  cond_init(&element->condition);
-
   lock_acquire(&timer_lock);
-  element->end_time = timer_ticks() + ticks;
-  list_insert_ordered (&timer_list, &element, end_time_less, NULL);
-  cond_wait(&element->condition, &timer_lock);
-  lock_release(&timer_lock);
 
-  // int64_t start = timer_ticks();
-  // while (timer_elapsed(start) < ticks)
-  //   thread_yield();
+  struct timer_elem *element = malloc(sizeof(struct timer_elem));
+  element->semaphore = malloc(sizeof(struct semaphore));
+  sema_init(element->semaphore, 0);
+
+  element->end_time = timer_ticks() + ticks;
+  list_insert_ordered (&timer_list, &element->elem, end_time_less, NULL);
+  lock_release(&timer_lock);
+	
+	sema_down(element->semaphore);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -199,18 +200,17 @@ timer_interrupt (struct intr_frame *args UNUSED)
   if (!lock_try_acquire(&timer_lock))
     return;
 
-  if (ticks % 10 == 0) {
-    while (!list_empty(&timer_list)){
-      struct timer_elem *element = list_entry (list_front(&timer_list), struct timer_elem, elem);
-      if (ticks >= element->end_time){
-        cond_signal(&element->condition, &timer_lock);
-         list_pop_front(&timer_list);
-      }
-      else {
-        break;
-      }
+  while (!list_empty(&timer_list)){
+    struct timer_elem *element = list_entry (list_front(&timer_list), struct timer_elem, elem);
+    if (ticks >= element->end_time){
+       sema_up(element->semaphore);
+       list_pop_front(&timer_list);
+    }
+    else {
+      break;
     }
   }
+
   lock_release(&timer_lock);
 }
 
