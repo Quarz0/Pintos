@@ -33,7 +33,7 @@ static void real_time_delay (int64_t num, int32_t denom);
 static struct list timer_list;
 static struct lock timer_lock;
 
-static int counter = 0; 
+static int counter = 0;
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -116,8 +116,7 @@ timer_sleep (int64_t ticks)
   element->end_time = timer_ticks() + ticks;
   list_insert_ordered (&timer_list, &element->elem, end_time_less, NULL);
   lock_release(&timer_lock);
-	
-	sema_down(element->semaphore);
+  sema_down(element->semaphore);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
