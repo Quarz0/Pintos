@@ -354,6 +354,28 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+/* Sets the the priority of thread with the donated priority. */
+
+void 
+setup_priority_donation (struct thread *t)
+{
+	struct list_elem *e1;
+	struct list_elem *e2;
+	int max_priority = t->priority;
+
+	for (e1 = list_begin (&t->locks); e1 != list_end (&t->locks); e1 = list_next (e1))
+	{
+		struct lock *l = list_entry (e1, struct lock, elem);
+		struct semaphore s = l->semaphore;
+		for (e2 = list_begin (&s.waiters); e2 != list_end (&s.waiters); e2 = list_next (e2))
+		{
+			struct thread *thread = list_entry (e2, struct thread, elem);
+			max_priority = max_priority > thread->priority ? max_priority : thread->priority;
+		}
+	}
+	t->priority = max_priority;
+}
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority)
@@ -493,7 +515,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->original_priority = priority;
   t->magic = THREAD_MAGIC;
-  list_init(&t->locks);
+  list_init (&t->locks);
   list_push_back (&all_list, &t->allelem);
 }
 
