@@ -70,6 +70,7 @@ sema_down (struct semaphore *sema)
   while (sema->value == 0)
     {
       list_push_back (&sema->waiters, &thread_current ()->elem);
+      thread_current ()->waiting = sema->holder;
       if (sema->holder != NULL)
         setup_priority_donation (sema->holder->holder);
       thread_block ();

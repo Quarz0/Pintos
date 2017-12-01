@@ -149,7 +149,7 @@ thread_print_stats (void)
 }
 
 /* Comparing thread priorities. */
-bool 
+bool
 priority_less (const struct list_elem *a, const struct list_elem *b, void *aux)
 {
   struct thread *t1 = list_entry (a, struct thread, elem);
@@ -263,6 +263,7 @@ thread_unblock (struct thread *t)
   //list_insert_ordered (&ready_list, &t->elem, priority_higher, NULL);
 	list_push_front (&ready_list, &t->elem);
   t->status = THREAD_READY;
+  t->waiting = NULL;
   intr_set_level (old_level);
 }
 
@@ -377,7 +378,10 @@ setup_priority_donation (struct thread *t)
 		}
 	}
   int old_priority = t->priority;
-	t->priority = max_priority;
+  t->priority = max_priority;
+  if (t->waiting != NULL){
+    setup_priority_donation (t->waiting->holder);
+  }
   if (t->priority < old_priority)
     thread_yield ();
 }
@@ -388,7 +392,7 @@ thread_set_priority (int new_priority)
 {
   thread_current ()->original_priority = new_priority;
   setup_priority_donation (thread_current());
- 
+
   if (!list_empty(&ready_list)){
 		struct list_elem *max = list_max (&ready_list, priority_less, NULL);
     struct thread *t = list_entry (max, struct thread, elem);
@@ -520,6 +524,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->original_priority = priority;
+  t->waiting = NULL;
   t->magic = THREAD_MAGIC;
   list_init (&t->locks);
   list_push_back (&all_list, &t->allelem);
@@ -553,7 +558,7 @@ next_thread_to_run (void)
 		list_remove(max);
 		return list_entry (max, struct thread, elem);
 	}
-    
+
 }
 
 /* Completes a thread switch by activating the new thread's page
