@@ -373,7 +373,10 @@ setup_priority_donation (struct thread *t)
 			max_priority = max_priority > thread->priority ? max_priority : thread->priority;
 		}
 	}
+  int old_priority = t->priority;
 	t->priority = max_priority;
+  if (t->priority < old_priority)
+    thread_yield ();
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */

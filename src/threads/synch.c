@@ -47,6 +47,7 @@ sema_init (struct semaphore *sema, unsigned value)
   ASSERT (sema != NULL);
 
   sema->value = value;
+  sema->holder = NULL;
   list_init (&sema->waiters);
 }
 
@@ -69,6 +70,8 @@ sema_down (struct semaphore *sema)
   while (sema->value == 0)
     {
       list_push_back (&sema->waiters, &thread_current ()->elem);
+      if (sema->holder != NULL)
+        setup_priority_donation (sema->holder->holder);
       thread_block ();
     }
   sema->value--;
@@ -179,6 +182,7 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+  (&lock->semaphore)->holder = lock;
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -198,7 +202,6 @@ lock_acquire (struct lock *lock)
 
   sema_down (&lock->semaphore);
   list_push_back (&thread_current ()->locks, &lock->elem);
-  setup_priority_donation (thread_current());
   lock->holder = thread_current ();
 }
 
@@ -219,7 +222,6 @@ lock_try_acquire (struct lock *lock)
   success = sema_try_down (&lock->semaphore);
   if (success){
 		list_push_back (&thread_current ()->locks, &lock->elem);
-    setup_priority_donation (thread_current());
     lock->holder = thread_current ();
 	}
   return success;
