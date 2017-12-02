@@ -5,11 +5,10 @@
 #include <stdint.h>
 #include <list.h>
 
-/* */
+/* Hold sleeping thread and their end times in ticks. */
 struct timer_elem {
   struct list_elem elem;
-  //struct condition *condition;
-  struct semaphore *semaphore;
+  struct thread *thread;
   int64_t end_time;
 };
 

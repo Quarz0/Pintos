@@ -105,18 +105,20 @@ static bool end_time_less (const struct list_elem *a, const struct list_elem *b,
 void
 timer_sleep (int64_t ticks)
 {
+  enum intr_level old_level;
+  struct timer_elem element;
+
   ASSERT (intr_get_level () == INTR_ON);
 
   lock_acquire(&timer_lock);
-
-  struct timer_elem *element = malloc(sizeof(struct timer_elem));
-  element->semaphore = malloc(sizeof(struct semaphore));
-  sema_init(element->semaphore, 0);
-
-  element->end_time = timer_ticks() + ticks;
-  list_insert_ordered (&timer_list, &element->elem, end_time_less, NULL);
+  element.thread = thread_current ();
+  element.end_time = timer_ticks () + ticks;
+  list_insert_ordered (&timer_list, &element.elem, end_time_less, NULL);
   lock_release(&timer_lock);
-  sema_down(element->semaphore);
+
+  old_level = intr_disable ();
+  thread_block ();
+  intr_set_level (old_level);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -196,21 +198,16 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
 
- // if (!lock_try_acquire(&timer_lock))
-   // return;
-
   while (!list_empty(&timer_list)){
     struct timer_elem *element = list_entry (list_front(&timer_list), struct timer_elem, elem);
     if (ticks >= element->end_time){
-       sema_up(element->semaphore);
+       thread_unblock (element->thread);
        list_pop_front(&timer_list);
     }
     else {
       break;
     }
   }
-
-  //lock_release(&timer_lock);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
