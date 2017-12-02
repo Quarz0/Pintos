@@ -150,11 +150,10 @@ thread_print_stats (void)
 
 /* Comparing thread priorities. */
 bool
-priority_less (const struct list_elem *a, const struct list_elem *b, void *aux)
+priority_thread_less (const struct list_elem *a, const struct list_elem *b, void *aux)
 {
   struct thread *t1 = list_entry (a, struct thread, elem);
   struct thread *t2 = list_entry (b, struct thread, elem);
-
   return t1->priority < t2->priority;
 }
 
@@ -394,7 +393,7 @@ thread_set_priority (int new_priority)
   setup_priority_donation (thread_current());
 
   if (!list_empty(&ready_list)){
-		struct list_elem *max = list_max (&ready_list, priority_less, NULL);
+		struct list_elem *max = list_max (&ready_list, priority_thread_less, NULL);
     struct thread *t = list_entry (max, struct thread, elem);
     if (t->priority > new_priority)
       thread_yield();
@@ -554,7 +553,7 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else {
-		struct list_elem *max = list_max (&ready_list, priority_less, NULL);
+		struct list_elem *max = list_max (&ready_list, priority_thread_less, NULL);
 		list_remove(max);
 		return list_entry (max, struct thread, elem);
 	}

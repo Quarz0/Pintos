@@ -196,8 +196,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
 
-  if (!lock_try_acquire(&timer_lock))
-    return;
+ // if (!lock_try_acquire(&timer_lock))
+   // return;
 
   while (!list_empty(&timer_list)){
     struct timer_elem *element = list_entry (list_front(&timer_list), struct timer_elem, elem);
@@ -210,7 +210,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     }
   }
 
-  lock_release(&timer_lock);
+  //lock_release(&timer_lock);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

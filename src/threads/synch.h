@@ -44,7 +44,7 @@ void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
 
 /* comparing priority of threads*/
-bool priority_less (const struct list_elem *a, const struct list_elem *b, void *aux); 
+bool priority_thread_less (const struct list_elem *a, const struct list_elem *b, void *aux); 
 
 /* Optimization barrier.
 
