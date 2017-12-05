@@ -93,6 +93,7 @@ struct thread
     struct list locks;                  /* List locks for all locks aquired by that thread.*/
     struct lock *waiting;               /* Lock the thread is waiting for it to be released to aquire */
 
+	int nice;                           /* Nice value of thread. */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -136,9 +137,12 @@ void thread_foreach (thread_action_func *, void *);
 int thread_get_priority (void);
 void thread_set_priority (int);
 
+int ready_queue_length(void);
 int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
+void thread_set_recent_cpu (int);
+void thread_set_load_avg (int);
 int thread_get_load_avg (void);
 
 #endif /* threads/thread.h */

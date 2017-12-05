@@ -1,4 +1,5 @@
 #include "threads/thread.h"
+#include "float.h"
 #include <debug.h>
 #include <stddef.h>
 #include <random.h>
@@ -59,6 +60,9 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
+int recent_cpu;
+int load_avg;
+
 static void kernel_thread (thread_func *, void *aux);
 
 static void idle (void *aux UNUSED);
@@ -93,7 +97,9 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-
+	
+	recent_cpu = 0;
+	load_avg = 0;
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -400,6 +406,13 @@ thread_set_priority (int new_priority)
   }
 }
 
+/* Returns the length of the ready queue. */
+int
+ready_queue_length(void)
+{
+	return list_size(&ready_list);
+} 
+
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void)
@@ -411,31 +424,50 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice UNUSED)
 {
-  /* Not yet implemented. */
+  thread_current()->nice = nice;
+	//priority = PRI_MAX - (recent_cpu / 4) - (nice * 2)
+	struct float32 real = to_float(thread_get_recent_cpu() / 4);
+	int calc_p = to_int(multiply_int((subtract_int(add_int(real, nice * 2), PRI_MAX)), -1), false);
+	thread_current()->original_priority = calc_p;
+	thread_current()->priority = calc_p;
+	thread_yield();
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void)
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current()->nice;
+}
+
+/* Set load_avg of the CPU. */
+void
+thread_set_load_avg (int value)
+{
+	load_avg = value;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void)
 {
-  /* Not yet implemented. */
-  return 0;
+  struct float32 real = to_float(load_avg);
+  return to_int (multiply_int (real, 100), true);
+}
+
+/* Set recent_cpu time. */
+void
+thread_set_recent_cpu (int value)
+{
+	recent_cpu = value;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void)
 {
-  /* Not yet implemented. */
-  return 0;
+  struct float32 real = to_float(recent_cpu);
+  return to_int (multiply_int (real, 100), true);
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
