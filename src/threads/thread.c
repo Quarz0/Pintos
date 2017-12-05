@@ -259,8 +259,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  //list_insert_ordered (&ready_list, &t->elem, priority_higher, NULL);
-	list_push_front (&ready_list, &t->elem);
+	list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   t->waiting = NULL;
   intr_set_level (old_level);
@@ -325,17 +324,16 @@ thread_exit (void)
 void
 thread_yield (void)
 {
-  struct thread *cur = thread_current ();
+  //struct thread *cur = thread_current ();
   enum intr_level old_level;
 
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) {
-    //list_insert_ordered (&ready_list, &cur->elem, priority_higher, NULL);
-		list_push_front (&ready_list, &cur->elem);
+  if (thread_current() != idle_thread) {
+		list_push_back (&ready_list, &thread_current ()->elem);
 	}
-  cur->status = THREAD_READY;
+  thread_current()->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
 }
@@ -369,7 +367,7 @@ setup_priority_donation (struct thread *t)
 	for (e1 = list_begin (&t->locks); e1 != list_end (&t->locks); e1 = list_next (e1))
 	{
 		struct lock *l = list_entry (e1, struct lock, elem);
-		struct semaphore *s = &l->semaphore;
+  	struct semaphore *s = &l->semaphore;
 		for (e2 = list_begin (&s->waiters); e2 != list_end (&s->waiters); e2 = list_next (e2))
 		{
 			struct thread *thread = list_entry (e2, struct thread, elem);

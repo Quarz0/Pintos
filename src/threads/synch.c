@@ -241,11 +241,16 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
+	
   lock->holder = NULL;
   sema_up (&lock->semaphore);
   list_remove(&lock->elem);
+	
+	enum intr_level old_level;
+  old_level = intr_disable ();
   setup_priority_donation (thread_current());
+  intr_set_level (old_level);
+
 }
 
 /* Returns true if the current thread holds LOCK, false
@@ -344,7 +349,6 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   if (!list_empty (&cond->waiters)) {
 		struct list_elem *max = list_max (&cond->waiters, priority_sema_less, NULL);
 		struct semaphore_elem *s = list_entry (max, struct semaphore_elem, elem);
-		
 		list_remove(max);
     sema_up (&list_entry (max, struct semaphore_elem, elem)->semaphore);
 	}
