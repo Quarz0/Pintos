@@ -89,6 +89,7 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     int original_priority;              /* Original Priority. */
+    int recent_cpu;
     struct list_elem allelem;           /* List element for all threads list. */
     struct list locks;                  /* List locks for all locks aquired by that thread.*/
     struct lock *waiting;               /* Lock the thread is waiting for it to be released to aquire */
@@ -141,7 +142,7 @@ int ready_queue_length(void);
 int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
-void thread_set_recent_cpu (struct thread *t, int);
+void thread_set_recent_cpu (int);
 void thread_set_load_avg (int);
 int thread_get_load_avg (void);
 

@@ -1,5 +1,5 @@
 #include "devices/timer.h"
-#include "float.h"
+#include <float.h>
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
@@ -111,9 +111,6 @@ timer_sleep (int64_t ticks)
 
   ASSERT (intr_get_level () == INTR_ON);
 
-  //lock_acquire(&timer_lock);
-  //lock_release(&timer_lock);
-
   old_level = intr_disable ();
 	element.thread = thread_current ();
   element.end_time = timer_ticks () + ticks;
@@ -191,6 +188,14 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
+
+static void
+calc_recent_cpu(struct thread *t, void *aux UNUSED) {
+  struct float32 real = to_float(thread_get_load_avg());
+	real = multiply_int(real, 2);
+	int recent_cpu = to_int(add_int(multiply_int(divide(real, add_int(real, 1)), t->recent_cpu), t->nice), true);
+  t->recent_cpu = recent_cpu;
+}
 
 /* Timer interrupt handler. */
 static void
@@ -214,21 +219,19 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
   if (thread_mlfqs)
   {
-    struct float32 real = to_float(thread_get_load_avg());
+    struct float32 real;
     struct float32 real60 = to_float(60);
     struct float32 real59 = to_float(59);
     struct float32 real1 = to_float(1);
 
     if(timer_ticks () % TIMER_FREQ == 0)
     {
-    	real = multiply_int(real, 2);
-    	int recent_cpu = to_int(add_int(multiply_int(divide(real, add_int(real, 1)), thread_get_recent_cpu()), thread_get_nice()), true);
-      thread_foreach (thread_set_recent_cpu, recent_cpu);
-
-    	int ready_threads = ready_queue_length();
-    	real = multiply_int(divide(real59,real60), thread_get_load_avg());
+    	int ready_threads = ready_queue_length() + 1;
+    	real = multiply_int(divide(real59, real60), thread_get_load_avg());
     	int load_avg =  to_int(add(real, multiply_int(divide(real1, real60), ready_threads)), true);
     	thread_set_load_avg(load_avg);
+
+      thread_foreach (calc_recent_cpu, NULL);
     }
 
     if(timer_ticks () % 4 == 0)
@@ -238,6 +241,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     }
   }
 }
+
 
 /* Returns true if LOOPS iterations waits for more than one timer
    tick, otherwise false. */

@@ -60,7 +60,6 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
-int recent_cpu;
 int load_avg;
 
 static void kernel_thread (thread_func *, void *aux);
@@ -98,7 +97,6 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
 
-	recent_cpu = 0;
 	load_avg = 0;
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -140,6 +138,9 @@ thread_tick (void)
 #endif
   else
     kernel_ticks++;
+
+  if (t != idle_thread)
+    t->recent_cpu++;
 
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
@@ -265,7 +266,6 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  //list_insert_ordered (&ready_list, &t->elem, priority_higher, NULL);
 	list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   t->waiting = NULL;
@@ -338,7 +338,6 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) {
-    //list_insert_ordered (&ready_list, &cur->elem, priority_higher, NULL);
 		list_push_back (&ready_list, &cur->elem);
 	}
   cur->status = THREAD_READY;
@@ -368,6 +367,9 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 setup_priority_donation (struct thread *t)
 {
+  if (thread_mlfqs)
+    return;
+
 	struct list_elem *e1;
 	struct list_elem *e2;
 	int max_priority = t->original_priority;
@@ -395,6 +397,11 @@ setup_priority_donation (struct thread *t)
 void
 thread_set_priority (int new_priority)
 {
+  if (thread_mlfqs)
+  {
+    thread_current ()->priority = new_priority;
+    return;
+  }
   thread_current ()->original_priority = new_priority;
   setup_priority_donation (thread_current());
 
@@ -424,13 +431,12 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice UNUSED)
 {
-  thread_current()->nice = nice;
 	//priority = PRI_MAX - (recent_cpu / 4) - (nice * 2)
+  thread_current()->nice = nice;
 	struct float32 real = to_float(thread_get_recent_cpu() / 4);
 	int calc_p = to_int(multiply_int((subtract_int(add_int(real, nice * 2), PRI_MAX)), -1), false);
-	thread_current()->original_priority = calc_p;
-	thread_current()->priority = calc_p;
-	thread_yield();
+  thread_set_priority (calc_p);
+	thread_yield ();
 }
 
 /* Returns the current thread's nice value. */
@@ -457,16 +463,16 @@ thread_get_load_avg (void)
 
 /* Set recent_cpu time. */
 void
-thread_set_recent_cpu (struct thread *t, int value)
+thread_set_recent_cpu (int value)
 {
-	recent_cpu = value;
+	thread_current ()->recent_cpu = value;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void)
 {
-  struct float32 real = to_float(recent_cpu);
+  struct float32 real = to_float(thread_current ()->recent_cpu);
   return to_int (multiply_int (real, 100), true);
 }
 
@@ -555,6 +561,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->original_priority = priority;
+  t->recent_cpu = 0;
   t->waiting = NULL;
   t->magic = THREAD_MAGIC;
   list_init (&t->locks);
