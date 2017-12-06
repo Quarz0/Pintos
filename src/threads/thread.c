@@ -97,7 +97,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-	
+
 	recent_cpu = 0;
 	load_avg = 0;
   /* Set up a thread structure for the running thread. */
@@ -266,7 +266,7 @@ thread_unblock (struct thread *t)
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
   //list_insert_ordered (&ready_list, &t->elem, priority_higher, NULL);
-	list_push_front (&ready_list, &t->elem);
+	list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   t->waiting = NULL;
   intr_set_level (old_level);
@@ -339,7 +339,7 @@ thread_yield (void)
   old_level = intr_disable ();
   if (cur != idle_thread) {
     //list_insert_ordered (&ready_list, &cur->elem, priority_higher, NULL);
-		list_push_front (&ready_list, &cur->elem);
+		list_push_back (&ready_list, &cur->elem);
 	}
   cur->status = THREAD_READY;
   schedule ();
@@ -411,7 +411,7 @@ int
 ready_queue_length(void)
 {
 	return list_size(&ready_list);
-} 
+}
 
 /* Returns the current thread's priority. */
 int
@@ -457,7 +457,7 @@ thread_get_load_avg (void)
 
 /* Set recent_cpu time. */
 void
-thread_set_recent_cpu (int value)
+thread_set_recent_cpu (struct thread *t, int value)
 {
 	recent_cpu = value;
 }
