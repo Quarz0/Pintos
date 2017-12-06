@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <float.h>
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -114,6 +115,7 @@ extern bool thread_mlfqs;
 
 void thread_init (void);
 void thread_start (void);
+bool is_idle_thread(struct thread *t);
 
 void thread_tick (void);
 void thread_print_stats (void);
@@ -143,7 +145,8 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 void thread_set_recent_cpu (int);
-void thread_set_load_avg (int);
+void thread_set_load_avg (struct float32);
 int thread_get_load_avg (void);
+struct float32 thread_get_real_load_avg (void);
 
 #endif /* threads/thread.h */

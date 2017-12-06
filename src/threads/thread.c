@@ -1,5 +1,5 @@
 #include "threads/thread.h"
-#include "float.h"
+#include <float.h>
 #include <debug.h>
 #include <stddef.h>
 #include <random.h>
@@ -60,7 +60,7 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
-int load_avg;
+struct float32 load_avg;
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -97,7 +97,7 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
 
-	load_avg = 0;
+	load_avg = to_float(0);
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -448,17 +448,22 @@ thread_get_nice (void)
 
 /* Set load_avg of the CPU. */
 void
-thread_set_load_avg (int value)
+thread_set_load_avg (struct float32 value)
 {
-	load_avg = value;
+	load_avg.n = value.n;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void)
 {
-  struct float32 real = to_float(load_avg);
-  return to_int (multiply_int (real, 100), true);
+  return to_int (multiply_int (load_avg, 100), true);
+}
+
+struct float32
+thread_get_real_load_avg (void)
+{
+  return load_avg;
 }
 
 /* Set recent_cpu time. */
@@ -544,6 +549,12 @@ static bool
 is_thread (struct thread *t)
 {
   return t != NULL && t->magic == THREAD_MAGIC;
+}
+
+bool
+is_idle_thread(struct thread *t)
+{
+  return t == idle_thread;
 }
 
 /* Does basic initialization of T as a blocked thread named

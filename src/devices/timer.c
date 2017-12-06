@@ -191,8 +191,7 @@ timer_print_stats (void)
 
 static void
 calc_recent_cpu(struct thread *t, void *aux UNUSED) {
-  struct float32 real = to_float(thread_get_load_avg());
-	real = multiply_int(real, 2);
+	struct float32 real = multiply_int(thread_get_real_load_avg (), 2);
 	int recent_cpu = to_int(add_int(multiply_int(divide(real, add_int(real, 1)), t->recent_cpu), t->nice), true);
   t->recent_cpu = recent_cpu;
 }
@@ -226,9 +225,11 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
     if(timer_ticks () % TIMER_FREQ == 0)
     {
-    	int ready_threads = ready_queue_length() + 1;
-    	real = multiply_int(divide(real59, real60), thread_get_load_avg());
-    	int load_avg =  to_int(add(real, multiply_int(divide(real1, real60), ready_threads)), true);
+    	int ready_threads = ready_queue_length();
+      if (!is_idle_thread (thread_current ()))
+        ready_threads++;
+    	real = multiply(divide(real59, real60), thread_get_real_load_avg ());
+      struct float32 load_avg =  add(real, multiply_int(divide(real1, real60), ready_threads));
     	thread_set_load_avg(load_avg);
 
       thread_foreach (calc_recent_cpu, NULL);
