@@ -195,6 +195,17 @@ calc_recent_cpu(struct thread *t, void *aux UNUSED) {
 	int recent_cpu = to_int(add_int(multiply_int(divide(real, add_int(real, 1)), t->recent_cpu), t->nice), true);
   t->recent_cpu = recent_cpu;
 }
+
+static void
+calc_priority(struct thread *t, void *aux UNUSED) {
+	
+	struct float32 real = to_float(t->recent_cpu);
+	struct float32 real4 = to_float(4);
+	real = divide(real, real4);
+	int calc_p = to_int(multiply_int((subtract_int(add_int(real, t->nice * 2), PRI_MAX)), -1), false);
+  t->priority = calc_p;
+}
+
 
 /* Timer interrupt handler. */
 static void
@@ -237,8 +248,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
     if(timer_ticks () % 4 == 0)
     {
-    	int priority = to_int(multiply_int((subtract_int(add_int(real, thread_get_nice() * 2), PRI_MAX)), -1), false);
-      thread_set_priority (priority);
+    	thread_foreach (calc_priority, NULL);
+			intr_yield_on_return ();
     }
   }
 }

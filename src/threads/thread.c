@@ -433,7 +433,9 @@ thread_set_nice (int nice UNUSED)
 {
 	//priority = PRI_MAX - (recent_cpu / 4) - (nice * 2)
   thread_current()->nice = nice;
-	struct float32 real = to_float(thread_get_recent_cpu() / 4);
+	struct float32 real = to_float(thread_get_recent_cpu());
+	struct float32 real4 = to_float(4);
+	real = divide(real, real4);
 	int calc_p = to_int(multiply_int((subtract_int(add_int(real, nice * 2), PRI_MAX)), -1), false);
   thread_set_priority (calc_p);
 	thread_yield ();
