@@ -31,8 +31,8 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
+/* List of sleeping threads. */
 static struct list timer_list;
-static struct lock timer_lock;
 
 static int counter = 0;
 
@@ -44,7 +44,6 @@ timer_init (void)
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
   list_init (&timer_list);
-  lock_init (&timer_lock);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -111,6 +110,7 @@ timer_sleep (int64_t ticks)
 
   ASSERT (intr_get_level () == INTR_ON);
 
+  /* Add thread to a list with its end time and block it. */
   old_level = intr_disable ();
 	element.thread = thread_current ();
   element.end_time = timer_ticks () + ticks;
@@ -189,6 +189,8 @@ timer_print_stats (void)
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
 
+/* Calculates recent_cpu according to this formula:
+   recent_cpu = (2*load_avg)/(2*load_avg + 1) * recent_cpu + nice */
 static void
 calc_recent_cpu(struct thread *t, void *aux UNUSED) {
 	struct float32 real = multiply_int(thread_get_real_load_avg (), 2);
@@ -196,9 +198,11 @@ calc_recent_cpu(struct thread *t, void *aux UNUSED) {
   t->recent_cpu = recent_cpu;
 }
 
+/* Calculates priority according to this formula:
+   priority = PRI_MAX - (recent_cpu / 4) - (nice * 2) */
 static void
 calc_priority(struct thread *t, void *aux UNUSED) {
-	
+
 	struct float32 real = to_float(t->recent_cpu);
 	struct float32 real4 = to_float(4);
 	real = divide(real, real4);
@@ -214,6 +218,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
 
+  /* Wakes up sleeping threads whose time has passed. */
   while (!list_empty(&timer_list))
   {
     struct timer_elem *element = list_entry (list_front(&timer_list), struct timer_elem, elem);
@@ -236,6 +241,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
     if(timer_ticks () % TIMER_FREQ == 0)
     {
+      /* Calculates load_avg according to this formula:
+         load_avg = (59/60)*load_avg + (1/60)*ready_threads */
     	int ready_threads = ready_queue_length();
       if (!is_idle_thread (thread_current ()))
         ready_threads++;

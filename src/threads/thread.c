@@ -60,6 +60,8 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
+/* Often known as the system load average.
+   Estimates the average number of threads ready to run over the past minute. */
 struct float32 load_avg;
 
 static void kernel_thread (thread_func *, void *aux);
@@ -98,6 +100,7 @@ thread_init (void)
   list_init (&all_list);
 
 	load_avg = to_float(0);
+
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -226,6 +229,7 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  /* Yield if the newly created thread has a higher priority than running thread. */
   if (t->priority > thread_current ()->priority){
     thread_yield ();
   }
@@ -362,11 +366,11 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-/* Sets the the priority of thread with the donated priority. */
-
+/* Setup the priority of the thread by getting highest donated value. */
 void
 setup_priority_donation (struct thread *t)
 {
+  /* No priority donation in advanced schedular */
   if (thread_mlfqs)
     return;
 
@@ -374,10 +378,12 @@ setup_priority_donation (struct thread *t)
 	struct list_elem *e2;
 	int max_priority = t->original_priority;
 
+  /* loops over the list of locks aquired by this thread. */
 	for (e1 = list_begin (&t->locks); e1 != list_end (&t->locks); e1 = list_next (e1))
 	{
 		struct lock *l = list_entry (e1, struct lock, elem);
 		struct semaphore *s = &l->semaphore;
+    /* loops over the list of threads waiting on the current lock held by this thread. */
 		for (e2 = list_begin (&s->waiters); e2 != list_end (&s->waiters); e2 = list_next (e2))
 		{
 			struct thread *thread = list_entry (e2, struct thread, elem);
@@ -386,25 +392,31 @@ setup_priority_donation (struct thread *t)
 	}
   int old_priority = t->priority;
   t->priority = max_priority;
+  /* If this thread is waiting for another lock, then recurse on this thread to setup its donated priority.
+     This achieves nested donation. */
   if (t->waiting != NULL){
     setup_priority_donation (t->waiting->holder);
   }
+  /* Yield if new priority is less than old priority. */
   if (t->priority < old_priority)
     thread_yield ();
 }
 
-/* Sets the current thread's priority to NEW_PRIORITY. */
+/* Sets the current thread's priority to new_priority. */
 void
 thread_set_priority (int new_priority)
 {
+  /* Advanced schedular only sets the priority and does nothing else. */
   if (thread_mlfqs)
   {
     thread_current ()->priority = new_priority;
     return;
   }
+  /* Update the original priority and sets up the donation. */
   thread_current ()->original_priority = new_priority;
   setup_priority_donation (thread_current());
 
+  /* Yield if the current thread no longer has the highest priority. */
   if (!list_empty(&ready_list)){
 		struct list_elem *max = list_max (&ready_list, priority_thread_less, NULL);
     struct thread *t = list_entry (max, struct thread, elem);
@@ -427,11 +439,11 @@ thread_get_priority (void)
   return thread_current ()->priority;
 }
 
-/* Sets the current thread's nice value to NICE. */
+/* Sets the current thread's nice value and recalculates the thread's priority based on the new value.
+   priority = PRI_MAX - (recent_cpu / 4) - (nice * 2) */
 void
-thread_set_nice (int nice UNUSED)
+thread_set_nice (int nice)
 {
-	//priority = PRI_MAX - (recent_cpu / 4) - (nice * 2)
   thread_current()->nice = nice;
 	struct float32 real = to_float(thread_get_recent_cpu());
 	struct float32 real4 = to_float(4);
@@ -455,7 +467,7 @@ thread_set_load_avg (struct float32 value)
 	load_avg.n = value.n;
 }
 
-/* Returns 100 times the system load average. */
+/* Returns 100 times the system load average rounded to the nearest integer. */
 int
 thread_get_load_avg (void)
 {
@@ -475,7 +487,7 @@ thread_set_recent_cpu (int value)
 	thread_current ()->recent_cpu = value;
 }
 
-/* Returns 100 times the current thread's recent_cpu value. */
+/* Returns 100 times the current thread's recent_cpu value rounded to the nearest integer. */
 int
 thread_get_recent_cpu (void)
 {
@@ -594,8 +606,8 @@ alloc_frame (struct thread *t, size_t size)
   return t->stack;
 }
 
-/* Chooses and returns the next thread to be scheduled.  Should
-   return a thread from the run queue, unless the run queue is
+/* Chooses and returns the next thread to be scheduled having max priority.
+   Should return a thread from the run queue, unless the run queue is
    empty.  (If the running thread can continue running, then it
    will be in the run queue.)  If the run queue is empty, return
    idle_thread. */

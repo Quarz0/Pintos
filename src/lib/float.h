@@ -6,7 +6,8 @@
 
 struct float32
 {
-  int n; /* */
+  int n; /* First FLOAT_P bits represent the part before decimal point
+            and the remaining bits represent the part after the decimal point. */
 };
 
 struct float32 to_float (int x);

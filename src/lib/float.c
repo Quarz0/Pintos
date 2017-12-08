@@ -2,6 +2,10 @@
 #include <stdio.h>
 #include "float.h"
 
+/* This file contains the basic arithmetic operations on the floating point struct
+   type defined in the header file. */
+
+/* Initializes a new float type from an int. */
 struct float32 to_float (int x)
 {
   struct float32 ret;
@@ -9,6 +13,7 @@ struct float32 to_float (int x)
   return ret;
 }
 
+/* Adds two floating point numbers. */
 struct float32 add (struct float32 x, struct float32 y)
 {
   struct float32 ret;
@@ -16,6 +21,7 @@ struct float32 add (struct float32 x, struct float32 y)
   return ret;
 }
 
+/* Adds a floating point number and an int */
 struct float32 add_int (struct float32 x, int y)
 {
   struct float32 ret;
@@ -23,6 +29,7 @@ struct float32 add_int (struct float32 x, int y)
   return ret;
 }
 
+/* Subtracts two floating point numbers. */
 struct float32 subtract (struct float32 x, struct float32 y)
 {
   struct float32 ret;
@@ -30,6 +37,7 @@ struct float32 subtract (struct float32 x, struct float32 y)
   return ret;
 }
 
+/* Subtracts a floating point number and an int */
 struct float32 subtract_int (struct float32 x, int y)
 {
   struct float32 ret;
@@ -37,6 +45,7 @@ struct float32 subtract_int (struct float32 x, int y)
   return ret;
 }
 
+/* Multiplies two floating point numbers. */
 struct float32 multiply (struct float32 x, struct float32 y)
 {
   struct float32 ret;
@@ -44,6 +53,7 @@ struct float32 multiply (struct float32 x, struct float32 y)
   return ret;
 }
 
+/* Multiplies a floating point number and an int */
 struct float32 multiply_int (struct float32 x, int y)
 {
   struct float32 ret;
@@ -51,6 +61,7 @@ struct float32 multiply_int (struct float32 x, int y)
   return ret;
 }
 
+/* Divides two floating point numbers. */
 struct float32 divide (struct float32 x, struct float32 y)
 {
   struct float32 ret;
@@ -58,6 +69,7 @@ struct float32 divide (struct float32 x, struct float32 y)
   return ret;
 }
 
+/* Divides a floating point number and an int */
 struct float32 divide_int (struct float32 x, int y)
 {
   struct float32 ret;
@@ -65,6 +77,9 @@ struct float32 divide_int (struct float32 x, int y)
   return ret;
 }
 
+/* Converts a float to an int. If round set to true,
+   then the value is rounded to the nearest integer,
+   else the part after the decimal point is truncated. */
 int to_int (struct float32 x, bool round)
 {
   if (round)

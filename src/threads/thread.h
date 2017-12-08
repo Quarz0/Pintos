@@ -90,13 +90,13 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     int original_priority;              /* Original Priority. */
-    int recent_cpu;
+    int recent_cpu;                     /* Measure how much CPU time each process has received "recently." */
+    int nice;                           /* Nice value that determines how "nice" the thread should be to other threads. */
     struct list_elem allelem;           /* List element for all threads list. */
     struct list locks;                  /* List locks for all locks aquired by that thread.*/
-    struct lock *waiting;               /* Lock the thread is waiting for it to be released to aquire */
+    struct lock *waiting;               /* Lock the thread is waiting on and aquired by another thread. */
 
-	int nice;                           /* Nice value of thread. */
-    /* Shared between thread.c and synch.c. */
+	  /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
 #ifdef USERPROG
