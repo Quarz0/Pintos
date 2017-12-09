@@ -414,7 +414,10 @@ thread_set_priority (int new_priority)
   }
   /* Update the original priority and sets up the donation. */
   thread_current ()->original_priority = new_priority;
+  enum intr_level old_level;
+  old_level = intr_disable ();
   setup_priority_donation (thread_current());
+  intr_set_level (old_level);
 
   /* Yield if the current thread no longer has the highest priority. */
   if (!list_empty(&ready_list)){

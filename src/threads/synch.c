@@ -245,7 +245,11 @@ lock_release (struct lock *lock)
   lock->holder = NULL;
   list_remove(&lock->elem);
   sema_up (&lock->semaphore);
+
+  enum intr_level old_level;
+  old_level = intr_disable ();
   setup_priority_donation (thread_current());
+  intr_set_level (old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false
