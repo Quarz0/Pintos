@@ -3,7 +3,6 @@
 
 #include <debug.h>
 #include <list.h>
-#include <file.h>
 #include <stdint.h>
 
 /* States in a thread's life cycle. */
@@ -90,7 +89,7 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-
+    int exit_status;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -98,10 +97,6 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-		struct list file_list;              /* List of open files. */
-		int counter;                    		/* counter saved for file fd. */
-		struct file *executable_file;   		/* executable file representing process. */
-
 #endif
 
     /* Owned by thread.c. */

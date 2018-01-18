@@ -6,7 +6,7 @@
 #include "process.h"
 #include "../filesys/filesys.h"
 #include "../filesys/file.h"
-#include "../shutdown.h"
+#include "../devices/shutdown.h"
 #include "filesys/off_t.h"
 
 static void syscall_handler (struct intr_frame *);
@@ -81,7 +81,9 @@ syscall_handler (struct intr_frame *f)
 		// default :
 
 		}
-  thread_exit ();
+  printf("HELLO?");
+  // thread_exit ();
+
 }
 
 //functions used in execution
@@ -109,15 +111,15 @@ int wait_sys_call (tid_t child_tid)
 
 struct file *get_file (int fd)
 {
-	struct list_elem *e;
- 	for (e = list_begin (&thread_current()->file_list); e != list_end (&thread_current()->file_list);
-       e = list_next (e))
-  {
-    struct file *f = list_entry (e, struct file, file_elem);
-    if(f->fd == fd) {
-			return f;
-		}
-	}
+	// struct list_elem *e;
+ 	// for (e = list_begin (&thread_current()->file_list); e != list_end (&thread_current()->file_list);
+  //      e = list_next (e))
+  // {
+  //   struct file *f = list_entry (e, struct file, file_elem);
+  //   if(f->fd == fd) {
+	// 		return f;
+	// 	}
+	// }
 	return NULL;
 }
 
@@ -140,7 +142,7 @@ int get_file_size_sys_call (int fd)
 {
 	struct file *f = get_file(fd);
 	if(f != NULL)
-		return file_length (f); 
+		return file_length (f);
 
 	return -1;
 }
@@ -150,12 +152,12 @@ void read_sys_call ()
 
 }
 
-int write_sys_call (int fd, const void *buffer, unsigned size) 
+int write_sys_call (int fd, const void *buffer, unsigned size)
 {
 	int val = -1;
 	if(fd == NULL)
 		return val;
-	
+
 	if(fd == 1) {
 		putbuf ((char*)buffer, (size_t)size);
 		return (int)size;
@@ -163,9 +165,8 @@ int write_sys_call (int fd, const void *buffer, unsigned size)
 			struct file *f = get_file(fd);
 			if(f != NULL)
 				val = (int) file_write (f, buffer, (off_t)size);
-    }	
-		return val; 
-	}
+  }
+	return val;
 }
 
 void seek_sys_call (int fd, unsigned pos)
@@ -180,7 +181,7 @@ unsigned tell_sys_call (int fd)
 	struct file *f = get_file(fd);
 	if(f != NULL)
 		return file_tell (f);
-	return -1; 
+	return -1;
 }
 
 void close_sys_call ()
@@ -202,11 +203,11 @@ void halt_ (struct intr_frame *f UNUSED)
 
 void exit_ (struct intr_frame *f)
 {
-	void pointer = f->esp;
+	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
   int status = *(int *)pointer;
- 
+
 	exit_sys_call(status);
 }
 
@@ -216,7 +217,7 @@ void exec_ (struct intr_frame *f)
 		//page_fault ();
 
 
-	void pointer = f->esp;
+	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
 	char *file_name = *(char **)pointer;
@@ -226,7 +227,7 @@ void exec_ (struct intr_frame *f)
 
 void wait_ (struct intr_frame *f)
 {
-	void pointer = f->esp;
+	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
 	tid_t child_tid = *(tid_t *)pointer;
@@ -237,29 +238,29 @@ void wait_ (struct intr_frame *f)
 
 void create_ (struct intr_frame *f)
 {
-	void pointer = f->esp;
+	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
 	char *file_name = *(char **)pointer;
 	pointer += sizeof(char**);
 	unsigned initial_size = *(unsigned *)pointer;
-	
+
 	f->eax = create_sys_call(file_name, initial_size);
 }
 
 void remove_ (struct intr_frame *f)
 {
-	void pointer = f->esp;
+	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
 	char *file_name = *(char **)pointer;
-	
+
 	f->eax = remove_sys_call(file_name);
 }
 
 void open_ (struct intr_frame *f)
 {
-	void pointer = f->esp;
+	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
 	char *file_name = *(char **)pointer;
@@ -269,7 +270,7 @@ void open_ (struct intr_frame *f)
 
 void get_file_size_ (struct intr_frame *f)
 {
-	void pointer = f->esp;
+	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
 	int fd = *(int *)pointer;
@@ -284,21 +285,24 @@ void read_ (struct intr_frame *f)
 
 void write_ (struct intr_frame *f)
 {
-	void pointer = f->esp;
+	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
 	int fd = *(int *)pointer;
+  printf("FD: %d\n", fd);
 	pointer += sizeof(int*);
-	void *buffer = *pointer;
+  char *buffer = *(char**)pointer;
+  // printf("Buffer: %s\n", buffer);
 	pointer += sizeof(void**);
 	unsigned size = *(unsigned *)pointer;
 
 	f->eax = write_sys_call(fd, buffer, size);
+  printf("eax: %d", f->eax);
 }
 
 void seek_ (struct intr_frame *f)
 {
-	void pointer = f->esp;
+	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
 	int fd = *(int *)pointer;
@@ -310,7 +314,7 @@ void seek_ (struct intr_frame *f)
 
 void tell_ (struct intr_frame *f)
 {
-	void pointer = f->esp;
+	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
 	int fd = *(int *)pointer;
@@ -320,6 +324,6 @@ void tell_ (struct intr_frame *f)
 
 void close_ (struct intr_frame *f)
 {
-	
+
 	close_sys_call();
 }
