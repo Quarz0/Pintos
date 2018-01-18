@@ -88,6 +88,25 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+
+		struct list_elem *e;
+		struct thread* child_thread = NULL;
+		siginfo_t child_state;
+
+  	for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, allelem);
+			if(t->tid == child_tid){
+      	child_thread = t;
+				break;
+			}
+    }
+		if(child_thread == NULL)
+			return -1;
+
+		if(waitid(P_PID, child_tid, &child_state, WEXITED) == 0)
+			return child_state;
   return -1;
 }
 
@@ -96,6 +115,20 @@ void
 process_exit (void)
 {
   struct thread *cur = thread_current ();
+
+	//we have to check that it is not a kernel process --------------------->>>>>>>>>>>>>>
+
+
+	struct list_elem *e;
+ 	for (e = list_begin (&cur->file_list); e != list_end (&cur->file_list);
+       e = list_next (e))
+  {
+    struct file *f = list_entry (e, struct file, file_elem);
+    close_sys_call (f->fd);
+	}	
+
+	file_close(cur->executable_file);
+
   uint32_t *pd;
 
   /* Destroy the current process's page directory and switch back
@@ -312,7 +345,13 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+	if(success)
+	{	
+		thread_current()->executable_file = file;
+		file_deny_write(file);
+	}
+	else
+  	file_close (file);
   return success;
 }
 

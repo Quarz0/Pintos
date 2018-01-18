@@ -469,6 +469,12 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+
+	#ifdef USERPROG
+		t->counter = 2;
+		list_init (&t->file_list);
+	#endif
+
   list_push_back (&all_list, &t->allelem);
 }
 

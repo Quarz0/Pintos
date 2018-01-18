@@ -3,6 +3,7 @@
 
 #include <debug.h>
 #include <list.h>
+#include <file.h>
 #include <stdint.h>
 
 /* States in a thread's life cycle. */
@@ -90,12 +91,17 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
+
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+		struct list file_list;              /* List of open files. */
+		int counter;                    		/* counter saved for file fd. */
+		struct file *executable_file;   		/* executable file representing process. */
+
 #endif
 
     /* Owned by thread.c. */
