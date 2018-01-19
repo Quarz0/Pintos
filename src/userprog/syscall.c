@@ -28,9 +28,13 @@ void seek_ (struct intr_frame *f);
 void tell_ (struct intr_frame *f);
 void close_ (struct intr_frame *f);
 
+struct lock *LOCK;
+
+
 void
 syscall_init (void)
 {
+	lock_init(&LOCK);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -129,6 +133,9 @@ struct file *get_file (int fd)
 
 bool create_sys_call (const char *name, unsigned initial_size)
 {
+	if(name == NULL)
+		return false;
+
 	return filesys_create (name, initial_size);
 }
 
@@ -139,7 +146,10 @@ bool remove_sys_call (const char *name)
 
 int open_sys_call (const char *name)
 {
+	if(name == NULL)
+		return -1;
 	struct file *f = filesys_open (name);
+
 	if(f == NULL)
 		return -1;
 
@@ -202,8 +212,8 @@ void close_sys_call (int fd)
 {
 	struct file *f = get_file(fd);
 	if(f != NULL) {
-		file_close (f);
 		list_remove (&f->file_elem);
+		file_close (f);
 	}
 }
 
@@ -283,8 +293,9 @@ void create_ (struct intr_frame *f)
 		page_fault(f);
 
 	unsigned initial_size = *(unsigned *)pointer;
+	lock_acquire (&LOCK);
 	f->eax = create_sys_call(file_name, initial_size);
-
+	lock_release (&LOCK);
 
 }
 
@@ -298,7 +309,9 @@ void remove_ (struct intr_frame *f)
 		page_fault(f);
 
 	char *file_name = *(char **)pointer;
+	lock_acquire (&LOCK);
 	f->eax = remove_sys_call(file_name);
+	lock_release (&LOCK);
 
 }
 
@@ -312,7 +325,9 @@ void open_ (struct intr_frame *f)
 		page_fault(f);
 
 	char *file_name = *(char **)pointer;
+	lock_acquire (&LOCK);
 	f->eax = open_sys_call(file_name);
+	lock_release (&LOCK);
 
 }
 
@@ -326,7 +341,9 @@ void get_file_size_ (struct intr_frame *f)
 		page_fault(f);
 
 	int fd = *(int *)pointer;
+	lock_acquire (&LOCK);
 	f->eax = get_file_size_sys_call(fd);
+	lock_release (&LOCK);
 
 }
 
@@ -352,7 +369,10 @@ void read_ (struct intr_frame *f)
 		page_fault(f);
 
 	unsigned size = *(unsigned *)pointer;
+	lock_acquire (&LOCK);
 	f->eax = read_sys_call(fd, buffer, size);
+	lock_release (&LOCK);
+
 }
 
 void write_ (struct intr_frame *f)
@@ -379,7 +399,9 @@ void write_ (struct intr_frame *f)
 		page_fault(f);
 
 	unsigned size = *(unsigned *)pointer;
+	lock_acquire (&LOCK);
 	f->eax = write_sys_call(fd, buffer, size);
+	lock_release (&LOCK);
   // printf("eax: %d", f->eax);
 
 }
@@ -400,7 +422,9 @@ void seek_ (struct intr_frame *f)
 		page_fault(f);
 
 	unsigned pos = *(unsigned *)pointer;
+	lock_acquire (&LOCK);
 	seek_sys_call(fd, pos);
+	lock_release (&LOCK);
 
 }
 
@@ -414,7 +438,9 @@ void tell_ (struct intr_frame *f)
 		page_fault(f);
 
 	int fd = *(int *)pointer;
+	lock_acquire (&LOCK);
 	f->eax = tell_sys_call(fd);
+	lock_release (&LOCK);
 
 }
 
@@ -427,6 +453,8 @@ void close_ (struct intr_frame *f)
 		page_fault(f);
 
 	int fd = *(int *)pointer;
+	lock_acquire (&LOCK);
 	close_sys_call(fd);
+	lock_release (&LOCK);
 
 }
