@@ -1,3 +1,5 @@
+#include "threads/interrupt.h"
+
 #ifndef USERPROG_EXCEPTION_H
 #define USERPROG_EXCEPTION_H
 
@@ -8,5 +10,6 @@
 
 void exception_init (void);
 void exception_print_stats (void);
+void page_fault (struct intr_frame *); 
 
 #endif /* userprog/exception.h */

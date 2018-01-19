@@ -3,7 +3,10 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "exception.h"
 #include "process.h"
+#include "pagedir.h"
+#include "threads/vaddr.h"
 #include "../filesys/filesys.h"
 #include "../filesys/file.h"
 #include "../devices/shutdown.h"
@@ -78,11 +81,9 @@ syscall_handler (struct intr_frame *f)
 		case SYS_CLOSE:
     	close_ (f);
       break;
-		// default :
-
+		default :
+			page_fault(f);
 		}
-  // thread_exit ();
-
 }
 
 //functions used in execution
@@ -135,9 +136,13 @@ bool remove_sys_call (const char *name)
 	return filesys_remove (name);
 }
 
-struct file *open_sys_call (const char *name)
+int open_sys_call (const char *name)
 {
-	return filesys_open (name);
+	struct file *f = filesys_open (name);
+	if(f == NULL)
+		return -1;
+	
+	return f->fd;
 }
 
 int get_file_size_sys_call (int fd)
@@ -149,16 +154,22 @@ int get_file_size_sys_call (int fd)
 	return -1;
 }
 
-void read_sys_call ()
+int read_sys_call (int fd, void *buffer, unsigned size)
 {
-
+	int val = -1;
+	if(fd == 0) {
+		return input_getc();
+	} else {
+			struct file *f = get_file(fd);
+			if(f != NULL)
+				val = (int) file_read (f, buffer, size);
+	}
+	return val;
 }
 
 int write_sys_call (int fd, const void *buffer, unsigned size)
 {
 	int val = -1;
-	if(fd == NULL)
-		return val;
 
 	if(fd == 1) {
 		putbuf ((char*)buffer, (size_t)size);
@@ -166,7 +177,7 @@ int write_sys_call (int fd, const void *buffer, unsigned size)
 	} else {
 			struct file *f = get_file(fd);
 			if(f != NULL)
-				val = (int) file_write (f, buffer, (off_t)size);
+				val = (int) file_write (f, buffer, size);
   }
 	return val;
 }
@@ -198,7 +209,12 @@ void close_sys_call (int fd)
 /* Checks the validity of the stack pointer. */
 bool is_valid_ (void *esp)
 {
-
+	if(esp == NULL || pagedir_get_page (thread_current()->pagedir, esp) == NULL){
+		return false;
+	}
+	if(!is_user_vaddr(esp)) {
+		return false;	
+	}
 	return true;
 }
 
@@ -212,22 +228,27 @@ void exit_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
-  int status = *(int *)pointer;
+
+	if(!is_valid_(pointer))
+		page_fault(f);
+	
+ 	int status = *(int *)pointer;
 	exit_sys_call(status);
+	
 }
 
 void exec_ (struct intr_frame *f)
 {
-	//if(!is_valid(f->esp))
-		//page_fault ();
-
-
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
+
+	if(!is_valid_(pointer))
+		page_fault(f);
+			
 	char *file_name = *(char **)pointer;
-	pointer += sizeof(char**);
 	f->eax = exec_sys_call(file_name);
+	
 }
 
 void wait_ (struct intr_frame *f)
@@ -235,10 +256,14 @@ void wait_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
-	tid_t child_tid = *(tid_t *)pointer;
-	pointer += sizeof(tid_t*);
 
+	if(!is_valid_(pointer))
+		page_fault(f);
+
+	tid_t child_tid = *(tid_t *)pointer;
 	wait_sys_call(child_tid);
+
+			
 }
 
 void create_ (struct intr_frame *f)
@@ -246,11 +271,20 @@ void create_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
+	
+	if(!is_valid_(pointer))
+		page_fault(f);
+		
 	char *file_name = *(char **)pointer;
 	pointer += sizeof(char**);
-	unsigned initial_size = *(unsigned *)pointer;
+	
+	if(!is_valid_(pointer))
+		page_fault(f);
 
+	unsigned initial_size = *(unsigned *)pointer;
 	f->eax = create_sys_call(file_name, initial_size);
+	
+			
 }
 
 void remove_ (struct intr_frame *f)
@@ -258,9 +292,13 @@ void remove_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
-	char *file_name = *(char **)pointer;
 
+	if(!is_valid_(pointer))
+		page_fault(f);
+		
+	char *file_name = *(char **)pointer;
 	f->eax = remove_sys_call(file_name);
+	
 }
 
 void open_ (struct intr_frame *f)
@@ -268,9 +306,13 @@ void open_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
+	
+	if(!is_valid_(pointer))
+		page_fault(f);
+		
 	char *file_name = *(char **)pointer;
+	f->eax = open_sys_call(file_name);
 
-	open_sys_call(file_name);
 }
 
 void get_file_size_ (struct intr_frame *f)
@@ -278,14 +320,38 @@ void get_file_size_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
-	int fd = *(int *)pointer;
 
+	if(!is_valid_(pointer))
+		page_fault(f);
+
+	int fd = *(int *)pointer;
 	f->eax = get_file_size_sys_call(fd);
+
 }
 
 void read_ (struct intr_frame *f)
 {
-	read_sys_call();
+	void *pointer = f->esp;
+	//incrementing pointer to skip system call number
+	pointer += sizeof(int*);
+	
+	if(!is_valid_(pointer))
+		page_fault(f);
+
+	int fd = *(int *)pointer;
+	pointer += sizeof(int*);
+  
+	if(!is_valid_(pointer))
+		page_fault(f);
+	
+	char *buffer = *(char**)pointer;
+	pointer += sizeof(char**);
+
+	if(!is_valid_(pointer))
+		page_fault(f);
+
+	unsigned size = *(unsigned *)pointer;
+	f->eax = read_sys_call(fd, buffer, size);
 }
 
 void write_ (struct intr_frame *f)
@@ -293,16 +359,28 @@ void write_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
+	
+	if(!is_valid_(pointer))
+		page_fault(f);
+		
 	int fd = *(int *)pointer;
   // printf("FD: %d\n", fd);
 	pointer += sizeof(int*);
-  char *buffer = *(char**)pointer;
+  
+	if(!is_valid_(pointer))
+		page_fault(f);
+	
+	char *buffer = *(char**)pointer;
   // printf("Buffer: %s\n", buffer);
-	pointer += sizeof(void**);
-	unsigned size = *(unsigned *)pointer;
+	pointer += sizeof(char**);
 
+	if(!is_valid_(pointer))
+		page_fault(f);
+
+	unsigned size = *(unsigned *)pointer;
 	f->eax = write_sys_call(fd, buffer, size);
   // printf("eax: %d", f->eax);
+
 }
 
 void seek_ (struct intr_frame *f)
@@ -310,10 +388,19 @@ void seek_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
+
+	if(!is_valid_(pointer))
+		page_fault(f);
+		
 	int fd = *(int *)pointer;
 	pointer += sizeof(int*);
+
+	if(!is_valid_(pointer))
+		page_fault(f);
+
 	unsigned pos = *(unsigned *)pointer;
 	seek_sys_call(fd, pos);
+	
 }
 
 void tell_ (struct intr_frame *f)
@@ -321,8 +408,13 @@ void tell_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
+	
+	if(!is_valid_(pointer))
+		page_fault(f);
+		
 	int fd = *(int *)pointer;
 	f->eax = tell_sys_call(fd);
+	
 }
 
 void close_ (struct intr_frame *f)
@@ -330,6 +422,10 @@ void close_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
+	if(!is_valid_(pointer))
+		page_fault(f);
+		
 	int fd = *(int *)pointer;
 	close_sys_call(fd);
+	
 }
