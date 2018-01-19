@@ -36,7 +36,7 @@ syscall_handler (struct intr_frame *f)
 {
 
 	int num = *(int *)f->esp;
-  printf ("system call! - %d\n", num);
+  // printf ("system call! - %d\n", num);
 
 	switch (num) {
 		case SYS_HALT:
@@ -81,7 +81,6 @@ syscall_handler (struct intr_frame *f)
 		// default :
 
 		}
-  printf("HELLO?");
   // thread_exit ();
 
 }
@@ -96,7 +95,10 @@ void halt_sys_call ()
 void exit_sys_call (int status)
 {
 	thread_current()->exit_status = status;
-	process_exit();
+  #ifdef USERPROG
+    printf ("%s: exit(%d)\n", thread_current ()->exec_name, status);
+  #endif
+  thread_exit();
 }
 
 tid_t exec_sys_call (const char *file_name)
@@ -211,7 +213,6 @@ void exit_ (struct intr_frame *f)
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
   int status = *(int *)pointer;
-
 	exit_sys_call(status);
 }
 
@@ -293,7 +294,7 @@ void write_ (struct intr_frame *f)
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
 	int fd = *(int *)pointer;
-  printf("FD: %d\n", fd);
+  // printf("FD: %d\n", fd);
 	pointer += sizeof(int*);
   char *buffer = *(char**)pointer;
   // printf("Buffer: %s\n", buffer);
@@ -301,7 +302,7 @@ void write_ (struct intr_frame *f)
 	unsigned size = *(unsigned *)pointer;
 
 	f->eax = write_sys_call(fd, buffer, size);
-  printf("eax: %d", f->eax);
+  // printf("eax: %d", f->eax);
 }
 
 void seek_ (struct intr_frame *f)

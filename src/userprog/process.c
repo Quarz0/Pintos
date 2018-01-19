@@ -88,27 +88,25 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED)
 {
-  printf("HEREE\n");
-    while (1);
-	// 	struct list_elem *e;
-	// 	struct thread* child_thread = NULL;
-	// 	siginfo_t child_state;
-  //
-  // 	for (e = list_begin (&all_list); e != list_end (&all_list);
-  //      e = list_next (e))
-  //   {
-  //     struct thread *t = list_entry (e, struct thread, allelem);
-	// 		if(t->tid == child_tid){
-  //     	child_thread = t;
-	// 			break;
-	// 		}
-  //   }
-	// 	if(child_thread == NULL)
-	// 		return -1;
-  //
-	// 	if(waitid(P_PID, child_tid, &child_state, WEXITED) == 0)
-	// 		return child_state;
-  return -1;
+  // printf("HEREE\n");
+    // while (1);
+
+	struct list_elem *e;
+	struct thread* child_thread = get_thread_by_tid (child_tid);
+	if(child_thread == NULL)
+		return -1;
+
+  // printf("child thread tid: %d\n", child_thread->tid);
+
+  enum intr_level old_level;
+  if (child_thread->status != THREAD_DYING)
+  {
+    old_level = intr_disable ();
+    thread_block ();
+    intr_set_level (old_level);
+  }
+
+  return child_thread->exit_status;
 }
 
 /* Free the current process's resources. */
@@ -119,16 +117,16 @@ process_exit (void)
 
 	//we have to check that it is not a kernel process --------------------->>>>>>>>>>>>>>
 
+   //
+	 // struct list_elem *e;
+ 	 // for (e = list_begin (&cur->file_list); e != list_end (&cur->file_list);
+   //      e = list_next (e))
+   // {
+   //   struct file *f = list_entry (e, struct file, file_elem);
+   //   close_sys_call (f->fd);
+	 // }
+	 // file_close(cur->executable_file);
 
-	 struct list_elem *e;
- 	 for (e = list_begin (&cur->file_list); e != list_end (&cur->file_list);
-        e = list_next (e))
-   {
-     struct file *f = list_entry (e, struct file, file_elem);
-     close_sys_call (f->fd);
-	 }
-  
-	 file_close(cur->executable_file);
 
   uint32_t *pd;
 
@@ -258,13 +256,17 @@ load (const char *file_name, void (**eip) (void), void **esp)
   char *save_ptr, *arg;
   char *exec_name = strtok_r (file_name, " ", &save_ptr);
   char *args = strtok_r (NULL, " ", &save_ptr);
+  thread_current ()->exec_name = exec_name;
+
+  thread_current()->exec_name = malloc(sizeof(char) * (strlen(exec_name) + 1));
+  memcpy(thread_current()->exec_name, exec_name, sizeof(char) * (strlen(exec_name) + 1));
 
   // for (arg = strtok_r (NULL, " ", &save_ptr); arg != NULL; arg = strtok_r (NULL, " ", &save_ptr))
   // {
   //   printf("%s\n\n", arg);
   // }
-  printf("exec_name: %s\n", exec_name);
-  printf("args: %s\n", args);
+  // printf("exec_name: %s\n", exec_name);
+  // printf("args: %s\n", args);
 
 
   /* Open executable file. */
@@ -512,7 +514,7 @@ setup_stack (void **esp, const char *arg0, const char *args)
     memcpy(*esp, arg, strlen(arg) + 1);
     addr[k] = malloc(sizeof(int));
     addr[k++] = *esp;
-    printf("arg%d: %s\n", k, arg);
+    // printf("arg%d: %s\n", k, arg);
   }
   // alignment
   int alignment = (int)(*esp) % 4;

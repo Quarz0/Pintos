@@ -90,6 +90,7 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
     int exit_status;
+    char *exec_name;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -100,6 +101,7 @@ struct thread
 		struct list file_list;              /* List of open files. */
 		int counter;                    		/* counter saved for file fd. */
 		struct file *executable_file;   		/* executable file representing process. */
+    struct thread *parent;
 
 #endif
 
@@ -134,6 +136,8 @@ void thread_yield (void);
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
+struct thread *get_thread_by_tid (tid_t tid);
+
 
 int thread_get_priority (void);
 void thread_set_priority (int);

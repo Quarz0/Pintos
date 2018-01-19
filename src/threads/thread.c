@@ -292,6 +292,7 @@ thread_exit (void)
 
 #ifdef USERPROG
   process_exit ();
+  thread_unblock (thread_current()->parent);
 #endif
 
   /* Remove thread from all threads list, set our status to dying,
@@ -337,6 +338,21 @@ thread_foreach (thread_action_func *func, void *aux)
       struct thread *t = list_entry (e, struct thread, allelem);
       func (t, aux);
     }
+}
+
+struct thread*
+get_thread_by_tid (tid_t tid)
+{
+  struct list_elem *e;
+  struct thread* t;
+
+  for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e))
+  {
+    t = list_entry (e, struct thread, allelem);
+    if(t->tid == tid)
+      return t;
+  }
+  return NULL;
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -471,6 +487,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 	#ifdef USERPROG
+    t->parent = running_thread ();
 		t->counter = 2;
 		list_init (&t->file_list);
 	#endif
