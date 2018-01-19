@@ -111,15 +111,15 @@ int wait_sys_call (tid_t child_tid)
 
 struct file *get_file (int fd)
 {
-	// struct list_elem *e;
- 	// for (e = list_begin (&thread_current()->file_list); e != list_end (&thread_current()->file_list);
-  //      e = list_next (e))
-  // {
-  //   struct file *f = list_entry (e, struct file, file_elem);
-  //   if(f->fd == fd) {
-	// 		return f;
-	// 	}
-	// }
+	 struct list_elem *e;
+ 	 for (e = list_begin (&thread_current()->file_list); e != list_end (&thread_current()->file_list);
+        e = list_next (e))
+   {
+     struct file *f = list_entry (e, struct file, file_elem);
+     if(f->fd == fd) {
+	 		return f;
+	 	}
+	 }
 	return NULL;
 }
 
@@ -184,9 +184,13 @@ unsigned tell_sys_call (int fd)
 	return -1;
 }
 
-void close_sys_call ()
+void close_sys_call (int fd)
 {
-
+	struct file *f = get_file(fd);
+	if(f != NULL) {
+		file_close (f);
+		list_remove (&f->file_elem);
+	}
 }
 
 /* Checks the validity of the stack pointer. */
@@ -308,7 +312,6 @@ void seek_ (struct intr_frame *f)
 	int fd = *(int *)pointer;
 	pointer += sizeof(int*);
 	unsigned pos = *(unsigned *)pointer;
-
 	seek_sys_call(fd, pos);
 }
 
@@ -318,12 +321,14 @@ void tell_ (struct intr_frame *f)
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
 	int fd = *(int *)pointer;
-
 	f->eax = tell_sys_call(fd);
 }
 
 void close_ (struct intr_frame *f)
 {
-
-	close_sys_call();
+	void *pointer = f->esp;
+	//incrementing pointer to skip system call number
+	pointer += sizeof(int*);
+	int fd = *(int *)pointer;
+	close_sys_call(fd);
 }

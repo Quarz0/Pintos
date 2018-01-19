@@ -97,6 +97,10 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+		struct list file_list;              /* List of open files. */
+		int counter;                    		/* counter saved for file fd. */
+		struct file *executable_file;   		/* executable file representing process. */
+
 #endif
 
     /* Owned by thread.c. */

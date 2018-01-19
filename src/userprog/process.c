@@ -120,15 +120,15 @@ process_exit (void)
 	//we have to check that it is not a kernel process --------------------->>>>>>>>>>>>>>
 
 
-	// struct list_elem *e;
- 	// for (e = list_begin (&cur->file_list); e != list_end (&cur->file_list);
-  //      e = list_next (e))
-  // {
-  //   struct file *f = list_entry (e, struct file, file_elem);
-  //   close_sys_call (f->fd);
-	// }
-  //
-	// file_close(cur->executable_file);
+	 struct list_elem *e;
+ 	 for (e = list_begin (&cur->file_list); e != list_end (&cur->file_list);
+        e = list_next (e))
+   {
+     struct file *f = list_entry (e, struct file, file_elem);
+     close_sys_call (f->fd);
+	 }
+  
+	 file_close(cur->executable_file);
 
   uint32_t *pd;
 
@@ -360,7 +360,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   /* We arrive here whether the load is successful or not. */
 	if(success)
 	{
-		// thread_current()->executable_file = file;
+		thread_current()->executable_file = file;
 		file_deny_write(file);
 	}
 	else
