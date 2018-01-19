@@ -522,15 +522,18 @@ setup_stack (void **esp, const char *arg0, const char *args)
   }
 
   // null pointer
-  char *null_ptr = "\0";
   *esp -= sizeof(char*);
-  memcpy(*esp, null_ptr, sizeof(char*));
+  memcpy(*esp, &arg, sizeof(char*));
 
-  for (i = 0; i < k; i++)
+  for (i = k-1; i >= 0; i--)
   {
     *esp -= sizeof(char*);
     memcpy(*esp, &addr[i], sizeof(char*));
   }
+
+  char **argv = *esp;
+  *esp -= sizeof(char**);
+  memcpy(*esp, &argv, sizeof(char**));
 
   int *argc = malloc(sizeof(int));
   *argc = k;
@@ -538,7 +541,7 @@ setup_stack (void **esp, const char *arg0, const char *args)
   memcpy(*esp, argc, sizeof(int));
 
   *esp -= sizeof(void*);
-  memcpy(*esp, null_ptr, sizeof(void*));
+  memcpy(*esp, &arg, sizeof(void*));
 
   // char *exec_name = strtok_r (file_name, " ", &save_ptr);
 
