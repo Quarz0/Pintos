@@ -171,9 +171,11 @@ int read_sys_call (int fd, void *buffer, unsigned size)
 	if(fd == 0) {
 		return input_getc();
 	} else {
+			lock_acquire (&LOCK);
 			struct file *f = get_file(fd);
 			if(f != NULL)
 				val = (int) file_read (f, buffer, size);
+			lock_release (&LOCK);
 	}
 	return val;
 }
@@ -186,9 +188,11 @@ int write_sys_call (int fd, const void *buffer, unsigned size)
 		putbuf ((char*)buffer, (size_t)size);
 		return (int)size;
 	} else {
+			lock_acquire (&LOCK);
 			struct file *f = get_file(fd);
 			if(f != NULL)
 				val = (int) file_write (f, buffer, size);
+			lock_release (&LOCK);
   }
 	return val;
 }
@@ -289,7 +293,7 @@ void create_ (struct intr_frame *f)
 	char *file_name = *(char **)pointer;
 	pointer += sizeof(char**);
 
-	if(!is_valid_(pointer))
+	if(!is_valid_(pointer) || file_name == NULL)
 		page_fault(f);
 
 	unsigned initial_size = *(unsigned *)pointer;
@@ -369,9 +373,7 @@ void read_ (struct intr_frame *f)
 		page_fault(f);
 
 	unsigned size = *(unsigned *)pointer;
-	lock_acquire (&LOCK);
 	f->eax = read_sys_call(fd, buffer, size);
-	lock_release (&LOCK);
 
 }
 
@@ -399,9 +401,7 @@ void write_ (struct intr_frame *f)
 		page_fault(f);
 
 	unsigned size = *(unsigned *)pointer;
-	lock_acquire (&LOCK);
 	f->eax = write_sys_call(fd, buffer, size);
-	lock_release (&LOCK);
   // printf("eax: %d", f->eax);
 
 }
