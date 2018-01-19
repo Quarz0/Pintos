@@ -106,7 +106,7 @@ process_wait (tid_t child_tid UNUSED)
     intr_set_level (old_level);
   }
 
-  return child_thread->exit_status;
+  return thread_current()->child_exit_status;
 }
 
 /* Free the current process's resources. */
@@ -253,9 +253,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
-  char *save_ptr, *arg;
-  char *exec_name = strtok_r (file_name, " ", &save_ptr);
-  char *args = strtok_r (NULL, " ", &save_ptr);
+  char *args, *arg;
+  char *exec_name = strtok_r (file_name, " ", &args);
+  // char *args = NULL;//strtok_r (NULL, " ", &save_ptr);
+  // printf("args: %s\nfile_name: %s\n", save_ptr, save_ptr);
   thread_current ()->exec_name = exec_name;
 
   thread_current()->exec_name = malloc(sizeof(char) * (strlen(exec_name) + 1));
@@ -499,7 +500,6 @@ setup_stack (void **esp, const char *arg0, const char *args)
   char *save_ptr, *arg;
   char *args_cpy = args;
   int **addr = malloc(sizeof(int*) * (strlen(arg0) + strlen(args)));
-  // int addr[strlen(arg0) + strlen(args)];
   int k = 0;
   int i;
 
@@ -507,14 +507,22 @@ setup_stack (void **esp, const char *arg0, const char *args)
   memcpy(*esp, arg0, strlen(arg0) + 1);
   addr[k] = malloc(sizeof(int));
   addr[k++] = *esp;
-
-  for (arg = strtok_r (args, " ", &save_ptr); arg != NULL; arg = strtok_r (NULL, " ", &save_ptr))
+  // printf("HERE: %s\n", args);
+  if (args == NULL)
   {
-    *esp -= sizeof(char) * (strlen(arg) + 1);
-    memcpy(*esp, arg, strlen(arg) + 1);
-    addr[k] = malloc(sizeof(int));
-    addr[k++] = *esp;
-    // printf("arg%d: %s\n", k, arg);
+    arg = NULL;
+  }
+  else
+  {
+    for (arg = strtok_r (args, " ", &save_ptr); arg != NULL; arg = strtok_r (NULL, " ", &save_ptr))
+    {
+      // printf("KDFLSKDJF\n");
+      *esp -= sizeof(char) * (strlen(arg) + 1);
+      memcpy(*esp, arg, strlen(arg) + 1);
+      addr[k] = malloc(sizeof(int));
+      addr[k++] = *esp;
+      // printf("arg%d: %s\n", k, arg);
+    }
   }
   // alignment
   int alignment = (int)(*esp) % 4;

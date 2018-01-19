@@ -95,8 +95,9 @@ void halt_sys_call ()
 
 void exit_sys_call (int status)
 {
-	thread_current()->exit_status = status;
+	// thread_current()->exit_status = status;
   #ifdef USERPROG
+    thread_current()->parent->child_exit_status = status;
     printf ("%s: exit(%d)\n", thread_current ()->exec_name, status);
   #endif
   thread_exit();
@@ -141,7 +142,7 @@ int open_sys_call (const char *name)
 	struct file *f = filesys_open (name);
 	if(f == NULL)
 		return -1;
-	
+
 	return f->fd;
 }
 
@@ -213,7 +214,7 @@ bool is_valid_ (void *esp)
 		return false;
 	}
 	if(!is_user_vaddr(esp)) {
-		return false;	
+		return false;
 	}
 	return true;
 }
@@ -231,10 +232,10 @@ void exit_ (struct intr_frame *f)
 
 	if(!is_valid_(pointer))
 		page_fault(f);
-	
+
  	int status = *(int *)pointer;
 	exit_sys_call(status);
-	
+
 }
 
 void exec_ (struct intr_frame *f)
@@ -245,10 +246,10 @@ void exec_ (struct intr_frame *f)
 
 	if(!is_valid_(pointer))
 		page_fault(f);
-			
+
 	char *file_name = *(char **)pointer;
 	f->eax = exec_sys_call(file_name);
-	
+
 }
 
 void wait_ (struct intr_frame *f)
@@ -261,9 +262,9 @@ void wait_ (struct intr_frame *f)
 		page_fault(f);
 
 	tid_t child_tid = *(tid_t *)pointer;
-	wait_sys_call(child_tid);
+	f->eax = wait_sys_call(child_tid);
 
-			
+
 }
 
 void create_ (struct intr_frame *f)
@@ -271,20 +272,20 @@ void create_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
-	
+
 	if(!is_valid_(pointer))
 		page_fault(f);
-		
+
 	char *file_name = *(char **)pointer;
 	pointer += sizeof(char**);
-	
+
 	if(!is_valid_(pointer))
 		page_fault(f);
 
 	unsigned initial_size = *(unsigned *)pointer;
 	f->eax = create_sys_call(file_name, initial_size);
-	
-			
+
+
 }
 
 void remove_ (struct intr_frame *f)
@@ -295,10 +296,10 @@ void remove_ (struct intr_frame *f)
 
 	if(!is_valid_(pointer))
 		page_fault(f);
-		
+
 	char *file_name = *(char **)pointer;
 	f->eax = remove_sys_call(file_name);
-	
+
 }
 
 void open_ (struct intr_frame *f)
@@ -306,10 +307,10 @@ void open_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
-	
+
 	if(!is_valid_(pointer))
 		page_fault(f);
-		
+
 	char *file_name = *(char **)pointer;
 	f->eax = open_sys_call(file_name);
 
@@ -334,16 +335,16 @@ void read_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
-	
+
 	if(!is_valid_(pointer))
 		page_fault(f);
 
 	int fd = *(int *)pointer;
 	pointer += sizeof(int*);
-  
+
 	if(!is_valid_(pointer))
 		page_fault(f);
-	
+
 	char *buffer = *(char**)pointer;
 	pointer += sizeof(char**);
 
@@ -359,17 +360,17 @@ void write_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
-	
+
 	if(!is_valid_(pointer))
 		page_fault(f);
-		
+
 	int fd = *(int *)pointer;
   // printf("FD: %d\n", fd);
 	pointer += sizeof(int*);
-  
+
 	if(!is_valid_(pointer))
 		page_fault(f);
-	
+
 	char *buffer = *(char**)pointer;
   // printf("Buffer: %s\n", buffer);
 	pointer += sizeof(char**);
@@ -391,7 +392,7 @@ void seek_ (struct intr_frame *f)
 
 	if(!is_valid_(pointer))
 		page_fault(f);
-		
+
 	int fd = *(int *)pointer;
 	pointer += sizeof(int*);
 
@@ -400,7 +401,7 @@ void seek_ (struct intr_frame *f)
 
 	unsigned pos = *(unsigned *)pointer;
 	seek_sys_call(fd, pos);
-	
+
 }
 
 void tell_ (struct intr_frame *f)
@@ -408,13 +409,13 @@ void tell_ (struct intr_frame *f)
 	void *pointer = f->esp;
 	//incrementing pointer to skip system call number
 	pointer += sizeof(int*);
-	
+
 	if(!is_valid_(pointer))
 		page_fault(f);
-		
+
 	int fd = *(int *)pointer;
 	f->eax = tell_sys_call(fd);
-	
+
 }
 
 void close_ (struct intr_frame *f)
@@ -424,8 +425,8 @@ void close_ (struct intr_frame *f)
 	pointer += sizeof(int*);
 	if(!is_valid_(pointer))
 		page_fault(f);
-		
+
 	int fd = *(int *)pointer;
 	close_sys_call(fd);
-	
+
 }
