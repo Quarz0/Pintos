@@ -110,10 +110,11 @@ process_wait (tid_t child_tid UNUSED)
 
 	struct list_elem *e;
 	struct thread* child_thread = get_thread_by_tid (child_tid);
-	if(child_thread == NULL && !thread_current()->child_loaded) {
+
+	if(child_thread == NULL && !thread_current()->child_loaded)
 		return -1;
   // printf("HERE: %d\n", thread_current()->child_exit_status);
-	}
+
   enum intr_level old_level;
   if (child_thread != NULL && child_thread->status != THREAD_DYING)
   {
@@ -134,13 +135,14 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
 
-   //
 	 // struct list_elem *e;
  	 // for (e = list_begin (&cur->file_list); e != list_end (&cur->file_list);
-   //      e = list_next (e))
-   // {
-   //   struct file *f = list_entry (e, struct file, file_elem);
-   //   close_sys_call (f->fd);
+     //    e = list_next (e))
+    //{
+     // struct file *f = list_entry (e, struct file, file_elem);
+		//	lock_acquire(&LOCK);
+     // close_sys_call (f->fd);
+		//	lock_release(&LOCK);
 	 // }
 	 file_close(cur->executable_file);
 
@@ -290,6 +292,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Open executable file. */
   file = filesys_open (exec_name);
+
+	lock_release(&LOCK);
   if (file == NULL)
     {
       printf ("load: %s: open failed\n", exec_name);
@@ -388,8 +392,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
 	}
 	else
   	file_close (file);
-
-	lock_release(&LOCK);
 
   return success;
 }
