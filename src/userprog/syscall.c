@@ -228,10 +228,14 @@ void close_sys_call (int fd)
 /* Checks the validity of the stack pointer. */
 bool is_valid_ (void *esp)
 {
-	if(esp == NULL || pagedir_get_page (thread_current()->pagedir, esp) == NULL){
+	if(esp == NULL)
+		return false;
+
+	if(!is_user_vaddr(esp)) {
 		return false;
 	}
-	if(!is_user_vaddr(esp)) {
+
+	if(pagedir_get_page (thread_current()->pagedir, esp) == NULL){
 		return false;
 	}
 	return true;
