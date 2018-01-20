@@ -42,11 +42,14 @@ process_execute (const char *file_name)
 	//thread_current()->s = malloc(sizeof(struct semaphore*));
 	sema_init (&thread_current()->s, 0);
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);	
-	sema_down(&thread_current()->s);
-  
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
+
+	sema_down(&thread_current()->s);
+  if (thread_current()->child_loaded)
+    sema_up(&get_thread_by_tid(tid)->s);
 
   return tid;
 }
@@ -68,14 +71,16 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
-	
 	sema_up(&thread_current()->parent->s);
 
   if (!success) {
 		thread_current()->parent->child_exit_status = -1;
     thread_exit ();
 	}
-	
+  thread_current()->parent->child_loaded = true;
+  sema_init(&thread_current()->s, 0);
+  sema_down(&thread_current()->s);
+
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -103,6 +108,7 @@ process_wait (tid_t child_tid UNUSED)
 	struct thread* child_thread = get_thread_by_tid (child_tid);
 	if(child_thread == NULL /*&& thread_current()->child_exit_status == -100*/)
 		return -1;
+  // printf("HERE: %d\n", thread_current()->child_exit_status);
 
   enum intr_level old_level;
   if (child_thread != NULL && child_thread->status != THREAD_DYING)
@@ -111,7 +117,7 @@ process_wait (tid_t child_tid UNUSED)
     thread_block ();
     intr_set_level (old_level);
   }
-	
+
   return thread_current()->child_exit_status;
 }
 

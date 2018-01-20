@@ -93,6 +93,7 @@ struct thread
     int child_exit_status;
     char *exec_name;
 		struct semaphore s;
+    bool child_loaded;
 		//struct list_elem child_elem;
 
     /* Shared between thread.c and synch.c. */
@@ -106,7 +107,7 @@ struct thread
 		struct file *executable_file;   		/* executable file representing process. */
     struct thread *parent;
 		//struct list children;
-		
+
 #endif
 
     /* Owned by thread.c. */
