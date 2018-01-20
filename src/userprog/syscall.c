@@ -109,7 +109,11 @@ void exit_sys_call (int status)
 
 tid_t exec_sys_call (const char *file_name)
 {
-	return process_execute (file_name);
+	tid_t t = process_execute (file_name);
+	if(thread_current()->child_exit_status == -1)
+		return -1;
+
+	return t; 
 }
 
 int wait_sys_call (tid_t child_tid)
@@ -276,9 +280,9 @@ void wait_ (struct intr_frame *f)
 		page_fault(f);
 
 	tid_t child_tid = *(tid_t *)pointer;
+	//lock_acquire(&LOCK);
 	f->eax = wait_sys_call(child_tid);
-
-
+	//lock_release(&LOCK);
 }
 
 void create_ (struct intr_frame *f)
@@ -329,6 +333,9 @@ void open_ (struct intr_frame *f)
 		page_fault(f);
 
 	char *file_name = *(char **)pointer;
+	if(file_name == NULL || !is_user_vaddr(file_name))
+		page_fault(f);
+
 	lock_acquire (&LOCK);
 	f->eax = open_sys_call(file_name);
 	lock_release (&LOCK);
@@ -369,7 +376,7 @@ void read_ (struct intr_frame *f)
 	char *buffer = *(char**)pointer;
 	pointer += sizeof(char**);
 
-	if(!is_valid_(pointer))
+	if(!is_valid_(pointer) || !is_user_vaddr(buffer) || buffer == NULL)
 		page_fault(f);
 
 	unsigned size = *(unsigned *)pointer;

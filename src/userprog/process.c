@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "threads/synch.h"
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
@@ -38,10 +39,15 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+	//thread_current()->s = malloc(sizeof(struct semaphore*));
+	sema_init (&thread_current()->s, 0);
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);	
+	sema_down(&thread_current()->s);
+  
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
+
   return tid;
 }
 
@@ -53,7 +59,6 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
-
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -63,9 +68,14 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success)
-    thread_exit ();
+	
+	sema_up(&thread_current()->parent->s);
 
+  if (!success) {
+		thread_current()->parent->child_exit_status = -1;
+    thread_exit ();
+	}
+	
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -88,24 +98,20 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED)
 {
-  // printf("HEREE\n");
-    // while (1);
 
 	struct list_elem *e;
 	struct thread* child_thread = get_thread_by_tid (child_tid);
-	if(child_thread == NULL)
+	if(child_thread == NULL /*&& thread_current()->child_exit_status == -100*/)
 		return -1;
 
-  // printf("child thread tid: %d\n", child_thread->tid);
-
   enum intr_level old_level;
-  if (child_thread->status != THREAD_DYING)
+  if (child_thread != NULL && child_thread->status != THREAD_DYING)
   {
     old_level = intr_disable ();
     thread_block ();
     intr_set_level (old_level);
   }
-
+	
   return thread_current()->child_exit_status;
 }
 
@@ -114,8 +120,6 @@ void
 process_exit (void)
 {
   struct thread *cur = thread_current ();
-
-	//we have to check that it is not a kernel process --------------------->>>>>>>>>>>>>>
 
    //
 	 // struct list_elem *e;
@@ -271,9 +275,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
 
   /* Open executable file. */
-	printf ("load:fffffffffffffffffffffffffffff\n");
   file = filesys_open (exec_name);
-	printf ("load:fffffffffffffffffffffffffffff\n");
   if (file == NULL)
     {
       printf ("load: %s: open failed\n", exec_name);

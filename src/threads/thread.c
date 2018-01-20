@@ -292,7 +292,8 @@ thread_exit (void)
 
 #ifdef USERPROG
   process_exit ();
-  thread_unblock (thread_current()->parent);
+	if (thread_current()->parent->status == THREAD_BLOCKED)
+  	thread_unblock (thread_current()->parent);
 #endif
 
   /* Remove thread from all threads list, set our status to dying,
@@ -488,6 +489,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
 	#ifdef USERPROG
     t->parent = running_thread ();
+	//	t->child_exit_status = -100;
 		t->counter = 2;
 		list_init (&t->file_list);
 	#endif
