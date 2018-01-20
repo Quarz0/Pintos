@@ -90,7 +90,8 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-    int child_exit_status;
+    // int child_exit_status;
+    struct list children_exit;
     char *exec_name;
 		struct semaphore s;
     bool child_loaded;
@@ -114,6 +115,12 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
   };
 
+struct exit_status
+  {
+    struct list_elem elem;
+    int status;
+    tid_t tid;
+  };
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -121,6 +128,9 @@ extern bool thread_mlfqs;
 
 void thread_init (void);
 void thread_start (void);
+
+int get_child_exit_status (tid_t tid);
+void set_child_exit_status (tid_t tid, int status);
 
 void thread_tick (void);
 void thread_print_stats (void);

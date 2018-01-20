@@ -19,9 +19,6 @@ file_open (struct inode *inode)
       file->inode = inode;
       file->pos = 0;
       file->deny_write = false;
-			file->fd = t->counter;
-			t->counter = t->counter + 1;
-			list_push_back (&(t->file_list), &file->file_elem);
       return file;
     }
   else

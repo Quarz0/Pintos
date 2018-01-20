@@ -488,6 +488,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   t->child_loaded = false;
   list_push_back (&all_list, &t->allelem);
+	list_init (&t->children_exit);
 	#ifdef USERPROG
     t->parent = running_thread ();
 	//	t->child_exit_status = -100;
@@ -507,6 +508,35 @@ alloc_frame (struct thread *t, size_t size)
 
   t->stack -= size;
   return t->stack;
+}
+
+
+int
+get_child_exit_status (tid_t tid)
+{
+  struct list_elem *e;
+  for (e = list_begin (&thread_current()->children_exit); e != list_end (&thread_current()->children_exit); e = list_next (e))
+  {
+    struct exit_status *f = list_entry (e, struct exit_status, elem);
+    if (f->tid == tid){
+      return f->status;
+    }
+  }
+  return 0;
+}
+
+void
+set_child_exit_status (tid_t tid, int status)
+{
+  struct list_elem *e;
+  for (e = list_begin (&thread_current()->children_exit); e != list_end (&thread_current()->children_exit); e = list_next (e))
+  {
+    struct exit_status *f = list_entry (e, struct exit_status, elem);
+    if (f->tid == tid){
+      f->status = status;
+      return;
+    }
+  }
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

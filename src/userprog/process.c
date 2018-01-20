@@ -74,7 +74,11 @@ start_process (void *file_name_)
 	sema_up(&thread_current()->parent->s);
 
   if (!success) {
-		thread_current()->parent->child_exit_status = -1;
+		// thread_current()->parent->child_exit_status = -1;
+    struct exit_status *es = malloc(sizeof(struct exit_status));
+    es->status = -1;
+    es->tid = thread_current()->tid;
+		list_push_back (&(thread_current()->parent->children_exit), &es->elem);
     thread_exit ();
 	}
   thread_current()->parent->child_loaded = true;
@@ -106,7 +110,7 @@ process_wait (tid_t child_tid UNUSED)
 
 	struct list_elem *e;
 	struct thread* child_thread = get_thread_by_tid (child_tid);
-	if(child_thread == NULL) {
+	if(child_thread == NULL && !thread_current()->child_loaded) {
 		return -1;
   // printf("HERE: %d\n", thread_current()->child_exit_status);
 	}
@@ -118,7 +122,10 @@ process_wait (tid_t child_tid UNUSED)
     intr_set_level (old_level);
   }
 
-  return thread_current()->child_exit_status;
+  int status = get_child_exit_status(child_tid);
+  set_child_exit_status(child_tid, -1);
+  return status;
+  // return get_child_exit_status(child_tid);//thread_current()->child_exit_status;
 }
 
 /* Free the current process's resources. */
@@ -135,7 +142,7 @@ process_exit (void)
    //   struct file *f = list_entry (e, struct file, file_elem);
    //   close_sys_call (f->fd);
 	 // }
-	 // file_close(cur->executable_file);
+	 file_close(cur->executable_file);
 
 
   uint32_t *pd;
@@ -360,8 +367,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
           break;
         }
     }
-	
-		
+
+
 
   /* Set up stack. */
   if (!setup_stack (esp, exec_name, args))

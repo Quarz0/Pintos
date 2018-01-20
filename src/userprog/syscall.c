@@ -99,7 +99,11 @@ void halt_sys_call ()
 void exit_sys_call (int status)
 {
   #ifdef USERPROG
-    thread_current()->parent->child_exit_status = status;
+    struct exit_status *es = malloc(sizeof(struct exit_status));
+    es->status = status;
+    es->tid = thread_current()->tid;
+		list_push_back (&(thread_current()->parent->children_exit), &es->elem);
+    // thread_current()->parent->child_exit_status = status;
     printf ("%s: exit(%d)\n", thread_current ()->exec_name, status);
   #endif
   thread_exit();
@@ -108,10 +112,11 @@ void exit_sys_call (int status)
 tid_t exec_sys_call (const char *file_name)
 {
 	tid_t t = process_execute (file_name);
-	if(thread_current()->child_exit_status == -1)
+	// if(thread_current()->child_exit_status == -1)
+  if (get_child_exit_status(t) == -1)
 		return -1;
 
-	return t; 
+	return t;
 }
 
 int wait_sys_call (tid_t child_tid)
@@ -154,6 +159,10 @@ int open_sys_call (const char *name)
 
 	if(f == NULL)
 		return -1;
+
+	f->fd = thread_current()->counter;
+	thread_current()->counter = thread_current()->counter + 1;
+	list_push_back (&(thread_current()->file_list), &f->file_elem);
 
 	return f->fd;
 }
