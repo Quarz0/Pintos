@@ -106,10 +106,10 @@ process_wait (tid_t child_tid UNUSED)
 
 	struct list_elem *e;
 	struct thread* child_thread = get_thread_by_tid (child_tid);
-	if(child_thread == NULL /*&& thread_current()->child_exit_status == -100*/)
+	if(child_thread == NULL) {
 		return -1;
   // printf("HERE: %d\n", thread_current()->child_exit_status);
-
+	}
   enum intr_level old_level;
   if (child_thread != NULL && child_thread->status != THREAD_DYING)
   {
@@ -279,6 +279,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   // printf("exec_name: %s\n", exec_name);
   // printf("args: %s\n", args);
 
+	lock_acquire(&LOCK);
 
   /* Open executable file. */
   file = filesys_open (exec_name);
@@ -359,6 +360,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
           break;
         }
     }
+	
+		
 
   /* Set up stack. */
   if (!setup_stack (esp, exec_name, args))
@@ -378,6 +381,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
 	}
 	else
   	file_close (file);
+
+	lock_release(&LOCK);
+
   return success;
 }
 

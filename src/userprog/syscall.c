@@ -43,7 +43,6 @@ syscall_handler (struct intr_frame *f)
 {
 
 	int num = *(int *)f->esp;
-  // printf ("system call! - %d\n", num);
 
 	switch (num) {
 		case SYS_HALT:
@@ -99,7 +98,6 @@ void halt_sys_call ()
 
 void exit_sys_call (int status)
 {
-	// thread_current()->exit_status = status;
   #ifdef USERPROG
     thread_current()->parent->child_exit_status = status;
     printf ("%s: exit(%d)\n", thread_current ()->exec_name, status);
@@ -173,13 +171,17 @@ int read_sys_call (int fd, void *buffer, unsigned size)
 {
 	int val = -1;
 	if(fd == 0) {
-		return input_getc();
+		int i = 0;
+		char *word = buffer;
+		for(; i < size; i++){
+			*word = input_getc();
+			word++;
+		}
+		return size;
 	} else {
-			lock_acquire (&LOCK);
 			struct file *f = get_file(fd);
 			if(f != NULL)
 				val = (int) file_read (f, buffer, size);
-			lock_release (&LOCK);
 	}
 	return val;
 }
@@ -192,11 +194,9 @@ int write_sys_call (int fd, const void *buffer, unsigned size)
 		putbuf ((char*)buffer, (size_t)size);
 		return (int)size;
 	} else {
-			lock_acquire (&LOCK);
 			struct file *f = get_file(fd);
 			if(f != NULL)
 				val = (int) file_write (f, buffer, size);
-			lock_release (&LOCK);
   }
 	return val;
 }
@@ -284,9 +284,7 @@ void wait_ (struct intr_frame *f)
 		page_fault(f);
 
 	tid_t child_tid = *(tid_t *)pointer;
-	//lock_acquire(&LOCK);
 	f->eax = wait_sys_call(child_tid);
-	//lock_release(&LOCK);
 }
 
 void create_ (struct intr_frame *f)
@@ -384,8 +382,9 @@ void read_ (struct intr_frame *f)
 		page_fault(f);
 
 	unsigned size = *(unsigned *)pointer;
+	lock_acquire(&LOCK);
 	f->eax = read_sys_call(fd, buffer, size);
-
+	lock_release(&LOCK);
 }
 
 void write_ (struct intr_frame *f)
@@ -398,22 +397,21 @@ void write_ (struct intr_frame *f)
 		page_fault(f);
 
 	int fd = *(int *)pointer;
-  // printf("FD: %d\n", fd);
 	pointer += sizeof(int*);
 
 	if(!is_valid_(pointer))
 		page_fault(f);
 
 	char *buffer = *(char**)pointer;
-  // printf("Buffer: %s\n", buffer);
 	pointer += sizeof(char**);
 
 	if(!is_valid_(pointer))
 		page_fault(f);
 
 	unsigned size = *(unsigned *)pointer;
+	lock_acquire(&LOCK);
 	f->eax = write_sys_call(fd, buffer, size);
-  // printf("eax: %d", f->eax);
+  lock_release(&LOCK);
 
 }
 
